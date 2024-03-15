@@ -1,33 +1,40 @@
-import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.generation.utils import GenerationConfig
 from ocr import getText
 
 
-# 加载模型
-tokenizer = AutoTokenizer.from_pretrained("./HuatuoGPT2-7B", use_fast=True, trust_remote_code=True)
-model = AutoModelForCausalLM.from_pretrained("./HuatuoGPT2-7B", device_map="cuda", torch_dtype=torch.bfloat16, trust_remote_code=True)
-
-
-# 扫描体检报告
-def getInfo(img):
-    content = getText(img)
-    content.append("以上是我的体检报告，请根据这份报告，分析我的健康状况，并给出建议")
-    return ' '.join(content)
-
-# 启动聊天
-def health_chat(person_info = None):
-    messages = []
-    # 传入体检信息，先分析，否则跳过
-    if person_info:
-        messages.append({"role": "user", "content": person_info})
-        response = model.HuatuoChat(tokenizer, messages)
-        return response
-    while 1:
-        m = input("请输入你的问题:(q退出)")
-        if m == 'q':
-            return
-        messages.append({"role": "user", "content": m})
-        response = model.HuatuoChat(tokenizer, messages)
-        return response
-
+class HealthModel:
+    def __init__(self, person_info=None):       #person_info为图片
+        # 初始化模型和分词器
+        self.model = AutoModelForCausalLM.from_pretrained("./HuatuoGPT2-7B", device_map="auto", trust_remote_code=True)
+        self.tokenizer = AutoTokenizer.from_pretrained("./HuatuoGPT2-7B", use_fast=True, trust_remote_code=True)
+        # 初始化一个空的上下文列表
+        self.messages = []
+        self.person_info = self.get_Health_Info(person_info) if person_info != None else None
+    
+    
+    def health_chat(self, question):
+        if self.person_info != None:
+            self.messages.append({"role": "user", "content": self.person_info})
+            response = self.model.HuatuoChat(self.tokenizer, self.messages)
+            return response
+        else:
+            self.messages.append({"role": "user", "content": question})
+            response = self.model.HuatuoChat(self.tokenizer, self.messages)
+            return response
+        
+    # 扫描体检报告
+    def get_Health_Info(self, image):
+        content = getText(image)
+        content.append("以上是我的体检报告，请根据这份报告，分析我的健康状况，并给出建议")
+        return ' '.join(content)
+    
+    # 清空聊天记录，开启新聊天
+    def set_new_chat(self,):
+        self.messages = []
+    
+    
+    # 清空信息
+    def delete_info(self,):
+        self.person_info = None
+        
