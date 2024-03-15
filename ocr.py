@@ -1,11 +1,13 @@
 import requests
 import json
+import requests
+from io import BytesIO
+from tempfile import NamedTemporaryFile
 
 
 def get_file_content(filePath):
     with open(filePath, 'rb') as fp:
         return fp.read()
-
 
 class CommonOcr(object):
     def __init__(self, img_path):
@@ -25,13 +27,33 @@ class CommonOcr(object):
             return result.text
         except Exception as e:
             return e
+        
 
-
-def getText(img):
-    response = CommonOcr(img)
-    ans = response.recognize()
-    data = json.loads(ans)  # 将str对象转换为字典
-    text_list = []  # 创建一个空列表用于存储text的内容
-    for line in data["result"]["lines"]:  # 遍历字典中的lines列表
-        text_list.append(line["text"])  # 将每个line中的text添加到列表中
-    return text_list
+def getText(img_url):   
+    # 发送GET请求到图片URL
+    response = requests.get(img_url)
+    
+    # 检查请求是否成功
+    if response.status_code == 200:
+        # 使用BytesIO将响应内容转换为字节对象
+        image_bytes = BytesIO(response.content)
+        
+        # 创建一个临时文件
+        with NamedTemporaryFile(delete=False) as tmp_file:
+            # 将字节对象写入临时文件
+            tmp_file.write(image_bytes.read())
+            
+            # 调用TextIn API来识别文字
+            ans = CommonOcr(tmp_file.name).recognize()
+            
+            # 将识别的文字转换为字典
+            data = json.loads(ans)
+            
+            # 从结果中提取文字
+            text_list = [line["text"] for line in data["result"]["lines"]]
+            
+            # 返回识别到的文字列表
+            return text_list
+    else:
+        # 如果请求失败，返回一个错误信息
+        return f"获取图片失败，状态码：{response.status_code}"
