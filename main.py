@@ -1,34 +1,39 @@
 import torch
 from PIL import Image
 from transformers import AutoModel, AutoTokenizer
-
-model = AutoModel.from_pretrained('./MiniCPM-V', trust_remote_code=True)
-tokenizer = AutoTokenizer.from_pretrained('./MiniCPM-V', trust_remote_code=True)
-model.eval()
+import requests
+from io import BytesIO
 
 
-# 输入图片询问或者直接询问
-def main(img=None):
-    if img:
-        image = Image.open(img).convert('RGB')
-    else:
-        image = Image.new('RGB', (0, 0))
-    context = []
-    while 1:
-        question = input("请输入问题：")
-        if question == 'q':
-            return
+class MainModel:
+    def __init__(self) -> None:
+        self.model = AutoModel.from_pretrained('./MiniCPM-V', 
+                                  trust_remote_code=True,
+                                  device_map="cuda").eval()
+        self.tokenizer = AutoTokenizer.from_pretrained('./MiniCPM-V', trust_remote_code=True)
+        self.context = []
+        self.temperature = 0.6
+        
+    # 问答    
+    def question_and_answer(self, question, image=None):
+        if image != None:
+            response = requests.get(image)
+            image = Image.open(BytesIO(response.content)).convert('RGB')
+        else:
+            image = Image.new('RGB', (0, 0))
         msgs = [{'role': 'user', 'content': question}]
-        res, context, _ = model.chat(
+        res, context, _ = self.model.chat(
             image=image,
             msgs=msgs,
-            context=context,
-            tokenizer=tokenizer,
+            context=self.context,
+            tokenizer=self.tokenizer,
             sampling=True,
-            temperature=0.7
+            temperature=self.temperature
         )
+        self.context.append(context)
         return res
-
-
-
+    
+    # 清空聊天记录，开启新聊天
+    def set_new_chat(self,):
+        self.context = []
 
