@@ -1,12 +1,26 @@
+from io import BytesIO
 from fastapi import  FastAPI, UploadFile
 from pydantic import BaseModel
 from ocr import getText
 from health_model import  HealthModel
 from main import MainModel
-from speech_to_text import Speech_To_Text
+import numpy as np
+import soundfile as sf
+from transformers import pipeline
+import librosa
 
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class GenerateRequest(BaseModel):
     prompt: str
@@ -58,9 +72,12 @@ async def health_chat_bot(question: GenerateRequest):
 async def speech_to_text(mp3: UploadFile):
     global speech_to_text_model
     if speech_to_text_model == None:
-        speech_to_text_model = Speech_To_Text()
-    text = speech_to_text_model.speech_to_text(mp3.file)
-    return {'text': text}
+        speech_to_text_model = pipeline("automatic-speech-recognition", model="openai/whisper-large-v3")
+    # 读取MP3文件为二进制数据
+    mp3_data = await mp3.read()
+    # 将二进制数据转换为numpy数组
+    audio, _ = librosa.load(BytesIO(mp3_data), mono=True)    
+    return speech_to_text_model(audio)
 
 
 # 清空聊天记录
@@ -77,3 +94,5 @@ async def clear(status: ClearStatus):
 @app.post('/ocr')
 async def ocr(image: Img):
     return getText(image.image)
+
+
