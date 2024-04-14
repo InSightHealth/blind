@@ -18,3 +18,4 @@
    - 编码器用于处理输入序列，解码器用于生成输出序列（例如翻译）。
 
 **下载部署**：如果是第一次使用，会自动联网下载模型到本地，下载完成后即可调用，通过如下代码加载模型`model = AutoModel.from_pretrained(model_name)`，接着加载分词器`tokenizer = AutoTokenizer.from_pretrained(model_name)`。通过`device_map`指定运行设备(GPU/CPU)，选择GPU推理(建议GPU内存>16G)。
+**注意**：受服务器的限制，以及为确保服务的安全性，我们暂未在公网环境下对外暴露模型接口。模型通过FastAPI对外提供服务接口，需要通过配置Nginx和Gunicorn服务器环境才可完整实现服务接入。
